@@ -2,7 +2,50 @@ PostgreSQL 17.7 on aarch64-apple-darwin21.6.0
 full_page_writes=on
 max_wal_size=20G
 
+DROP TABLE IF EXISTS batchbalance_base CASCADE;
+DROP TABLE IF EXISTS join_table CASCADE;
 
+CREATE TABLE join_table (
+  join_column bigint PRIMARY KEY,
+  column_to_delete boolean NOT NULL
+);
+
+-- 1M join keys, 30% marked for deletion
+INSERT INTO join_table
+SELECT gs, (random() < 0.30)
+FROM generate_series(1, 1000000) gs;
+
+CREATE TABLE batchbalance_base (
+  batchid bigint PRIMARY KEY,
+  join_column bigint NOT NULL,
+  closeddate timestamptz NOT NULL,
+  preopeningbalance int NOT NULL,
+  preopeningauthbalance int NOT NULL,
+  preopeningblockedbalance int NOT NULL,
+  payload bytea NOT NULL
+);
+
+-- Load 10M rows
+INSERT INTO batchbalance_base
+SELECT
+  gs AS batchid,
+  1 + (random()*999999)::bigint,
+  now() - ((random()*120)::int * interval '1 day'),
+  CASE WHEN random() < 0.85 THEN 0 ELSE (random()*100)::int END,
+  CASE WHEN random() < 0.85 THEN 0 ELSE (random()*100)::int END,
+  CASE WHEN random() < 0.85 THEN 0 ELSE (random()*100)::int END,
+  decode(repeat('ab', 200), 'hex')  -- ~200 bytes; tune
+FROM generate_series(1, 10000000) gs;
+
+-- Indexes (important for fairness)
+CREATE INDEX batchbalance_base_closeddate_idx ON batchbalance_base (closeddate);
+CREATE INDEX batchbalance_base_join_idx      ON batchbalance_base (join_column);
+
+VACUUM (ANALYZE) join_table;
+VACUUM (ANALYZE) batchbalance_base;
+
+
+  
 -- ============================================================
 -- 0) Results table
 -- ============================================================
