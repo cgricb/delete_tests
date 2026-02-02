@@ -11,4 +11,4 @@ There are also examples about different DML based deletion techniques that you c
 
 batched_delete_with_cte.sql and delete_staged_keysdata.sql are the examples how you can perform UPDATE/DELETEs at scale with controlling vacuum behavior.
 
-vm_regression and LP_DEAD files are mostly tests to show impact of visibility map on Index Only Scans and LP_DEAD hint bit impact on the queries that runs on master and replica differently.
+vm_regression and LP_DEAD files are mostly tests to show impact of visibility map on Index Only Scans and LP_DEAD hint bit impact on the queries. Both cases is proving the importance of vacuum and when it is missed as a concept , we should expect performance impacts .
